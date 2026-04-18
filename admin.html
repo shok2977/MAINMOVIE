@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ZyroMovies Admin Panel</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&family=Sen:wght@400;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css"
+    />
+  </head>
+  <body class="admin-body">
+    <div class="admin-wrapper">
+      <div class="admin-auth-card" id="admin-login-card">
+        <h1 class="admin-title">Baap Login</h1>
+        <p class="admin-subtitle">
+          Use the credentials you specified to manage content.
+        </p>
+        <form id="admin-login-form" class="admin-form">
+          <label class="admin-label" for="admin-username">Admin ID</label>
+          <input
+            id="admin-username"
+            type="text"
+            class="admin-input"
+            placeholder="Enter admin ID"
+            autocomplete="username"
+          />
+
+          <label class="admin-label" for="admin-password">Password</label>
+          <input
+            id="admin-password"
+            type="password"
+            class="admin-input"
+            placeholder="Enter password"
+            autocomplete="current-password"
+          />
+
+          <button type="submit" class="admin-primary-btn">Sign In</button>
+          <p class="admin-error" id="admin-login-error"></p>
+        </form>
+        <p class="admin-hint">
+          ID: <strong>Adityasharma123</strong> <br />
+          Password: <strong>Aditya@sharma2977</strong>
+        </p>
+        <a href="index.html" class="admin-back-link">
+          <i class="fas fa-arrow-left"></i> Back to site
+        </a>
+      </div>
+
+      <div class="admin-panel" id="admin-panel" style="display: none">
+        <header class="admin-header">
+          <h1 class="admin-logo">ZyroMovies Admin</h1>
+          <nav class="admin-nav">
+            <button
+              class="admin-nav-btn active"
+              data-section="dashboard-section"
+            >
+              Dashboard
+            </button>
+            <button class="admin-nav-btn" data-section="lists-section">
+              Lists
+            </button>
+            <button class="admin-nav-btn" data-section="add-movie-section">
+              Add Movie / Anime / TV
+            </button>
+            <button class="admin-nav-btn" data-section="banners-section">
+              Add Banner
+            </button>
+          </nav>
+          <div class="admin-header-actions">
+            <a href="index.html" class="admin-back-site-link">
+              <i class="fas fa-home"></i> View Site
+            </a>
+            <button id="admin-logout-btn" class="admin-secondary-btn">
+              Logout
+            </button>
+          </div>
+        </header>
+
+        <main class="admin-main">
+          <section
+            id="dashboard-section"
+            class="admin-section admin-section-active"
+          >
+            <h2 class="admin-section-title">Overview</h2>
+            <div class="admin-stats-grid">
+              <div class="admin-stat-card">
+                <span class="admin-stat-label">Total Titles</span>
+                <span id="stat-total-titles" class="admin-stat-value">0</span>
+              </div>
+              <div class="admin-stat-card">
+                <span class="admin-stat-label">Lists</span>
+                <span id="stat-total-lists" class="admin-stat-value">0</span>
+              </div>
+            </div>
+
+            <h3 class="admin-section-subtitle">Recent Titles</h3>
+            <div id="admin-recent-list" class="admin-table">
+              <!-- filled by JS -->
+            </div>
+          </section>
+
+          <section id="lists-section" class="admin-section">
+            <h2 class="admin-section-title">Manage Lists</h2>
+
+            <form id="create-list-form" class="admin-form inline-form">
+              <div class="inline-group">
+                <label class="admin-label" for="new-list-name">New list</label>
+                <input
+                  id="new-list-name"
+                  type="text"
+                  class="admin-input"
+                  placeholder="e.g. Anime, New Releases, Hidden Gems"
+                />
+              </div>
+              <button type="submit" class="admin-primary-btn">
+                Create List
+              </button>
+            </form>
+
+            <p class="admin-help-text">
+              Some ideas:
+              <strong>Anime, New Releases, Hidden Gems, Best, Top 10</strong>
+            </p>
+            <p class="admin-help-text">
+              Har list ke saamne <strong>Position #</strong> (1, 2, 3…) set karke
+              <strong>Save list positions</strong> dabayein — home page par wahi order hoga.
+              <strong>Random</strong> lists hamesha sabse niche.
+            </p>
+
+            <div id="lists-table" class="admin-table">
+              <!-- filled by JS -->
+            </div>
+          </section>
+
+          <section id="add-movie-section" class="admin-section">
+            <h2 class="admin-section-title">
+              Add Movie / Anime / TV
+            </h2>
+            <p class="admin-help-text">
+              Option 1 uses <strong>vidsrc</strong>, option 2 uses <strong>downloads (Fluid Player)</strong>,
+              option 3 uses <strong>Streammafia</strong>, and option 4 uses <strong>Mapple.mov</strong>
+              (TMDB ID based embed).
+            </p>
+
+            <form id="add-title-form" class="admin-form">
+              <label class="admin-label" for="source-kind">Source</label>
+              <select id="source-kind" class="admin-input">
+                <option value="vidsrc">1) Add movie from vidsrc</option>
+                <option value="download">2) Add movie from downloads (Fluid Player)</option>
+                <option value="streammafia">3) Add movie from Streammafia</option>
+                <option value="mapple">4) Add movie from Mapple.mov</option>
+              </select>
+
+              <label class="admin-label" for="tmdb-id">TMDB ID</label>
+              <input
+                id="tmdb-id"
+                type="number"
+                class="admin-input"
+                placeholder="e.g. 71446 or 1234821"
+              />
+
+              <label class="admin-label" for="content-type">Content type</label>
+              <select id="content-type" class="admin-input">
+                <option value="movie">Movie</option>
+                <option value="animeMovie">Anime movie</option>
+                <option value="anime">Anime</option>
+                <option value="tv">TV Show</option>
+              </select>
+
+              <div id="download-fields" style="display: none;">
+                <div id="download-movie-only-fields" style="display: none;">
+                  <label class="admin-label" for="download-fluid-script">
+                    Fluid Player code (downloads)
+                  </label>
+                  <textarea
+                    id="download-fluid-script"
+                    class="admin-input"
+                    rows="6"
+                    placeholder="Paste full Fluid Player embed code here for this movie"
+                  ></textarea>
+                  <p class="admin-small">
+                    TMDB ID is still used for title, description and poster image on user side.
+                  </p>
+                </div>
+                <div id="download-episodes-container" class="admin-episodes-list">
+                  <!-- per-episode fields for tv/anime downloads -->
+                </div>
+              </div>
+
+              <label class="admin-label" for="assign-list">Assign to list</label>
+              <select id="assign-list" class="admin-input">
+                <!-- populated by JS -->
+              </select>
+              <p class="admin-small">
+                Create lists in the "Lists" tab first (Anime, New Releases, etc.).
+              </p>
+
+              <button type="submit" class="admin-primary-btn">
+                Save Title
+              </button>
+              <p class="admin-error" id="add-title-error"></p>
+              <p class="admin-success" id="add-title-success"></p>
+            </form>
+          </section>
+
+          <section id="banners-section" class="admin-section">
+            <h2 class="admin-section-title">Add Banner</h2>
+            <p class="admin-help-text">
+              Upload a banner (drag and drop) and link it to an already-added
+              movie/series.
+            </p>
+
+            <form id="add-banner-form" class="admin-form">
+              <div
+                id="banner-dropzone"
+                class="admin-input"
+                style="border-style: dashed; cursor: pointer; text-align: center; padding: 18px 10px;"
+              >
+                Drag & drop banner image here
+                <div class="admin-small" style="margin-top: 6px;">
+                  Or click to choose file
+                </div>
+              </div>
+              <input
+                id="banner-image-file"
+                type="file"
+                accept="image/*"
+                style="display: none;"
+              />
+
+              <div id="banner-image-preview-wrap" style="display: none; margin-top: 8px;">
+                <img
+                  id="banner-image-preview"
+                  src=""
+                  alt="Banner preview"
+                  style="max-width: 100%; max-height: 240px; border-radius: 12px;"
+                />
+              </div>
+
+              <label class="admin-label" for="banner-title">Banner Title</label>
+              <input
+                id="banner-title"
+                type="text"
+                class="admin-input"
+                placeholder="e.g. Breaking Bad"
+              />
+
+              <label class="admin-label" for="banner-description">Banner Description</label>
+              <textarea
+                id="banner-description"
+                class="admin-input"
+                rows="4"
+                placeholder="This description will replace the lorem on the user side."
+              ></textarea>
+
+              <label class="admin-label" for="banner-tmdb-id">TMDB ID</label>
+              <input
+                id="banner-tmdb-id"
+                type="number"
+                class="admin-input"
+                placeholder="e.g. 71446"
+              />
+
+              <label class="admin-label" for="banner-content-type">Content type (matches your saved title)</label>
+              <select id="banner-content-type" class="admin-input">
+                <option value="movie">Movie</option>
+                <option value="animeMovie">Anime movie</option>
+                <option value="tv">TV Show</option>
+                <option value="anime">Anime</option>
+              </select>
+
+              <button type="submit" class="admin-primary-btn">
+                Add Banner
+              </button>
+
+              <p class="admin-error" id="add-banner-error"></p>
+            </form>
+
+            <h3 class="admin-section-subtitle">Existing Banners</h3>
+            <div id="banners-list" class="admin-table">
+              <!-- Filled by JS -->
+            </div>
+          </section>
+
+          <section id="edit-movie-section" class="admin-section">
+            <h2 class="admin-section-title">Edit Title</h2>
+
+            <p class="admin-help-text">
+              For downloads (Fluid Player), you can manage episode-wise scripts below.
+            </p>
+            <h3 id="edit-movie-title" class="admin-section-subtitle"></h3>
+
+            <div id="edit-movie-languages" class="admin-language-list">
+              <!-- language rows added by JS -->
+            </div>
+
+            <button
+              type="button"
+              id="edit-movie-add-language"
+              class="admin-secondary-btn"
+              style="display: none;"
+            >
+              Add language
+            </button>
+
+            <h3 class="admin-section-subtitle" id="edit-episodes-title" style="display: none;">
+              Episodes (downloads)
+            </h3>
+            <p class="admin-help-text" id="edit-episodes-help" style="display: none;">
+              For TV/Anime added from downloads, set Fluid Player code for each episode below.
+            </p>
+            <div id="edit-download-episodes" class="admin-episodes-list">
+              <!-- per-episode rows added by JS -->
+            </div>
+
+            <div class="admin-edit-actions">
+              <button
+                type="button"
+                id="edit-movie-save"
+                class="admin-primary-btn"
+              >
+                Save changes
+              </button>
+              <button
+                type="button"
+                id="edit-movie-cancel"
+                class="admin-secondary-btn"
+              >
+                Cancel
+              </button>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script src="admin.js"></script>
+  </body>
+</html>
+

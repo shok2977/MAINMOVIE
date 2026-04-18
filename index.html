@@ -1,0 +1,67 @@
+<html lang="en">
+  
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <meta
+        name="description"
+        content="ZyroMovies: Watch movies, anime, and TV shows in your favorite languages with fast streaming."
+    />
+    <meta
+        name="keywords"
+        content="movies, anime, tv shows, streaming, Fluid Player, ZyroMovies"
+    />
+    <meta property="og:title" content="ZyroMovies" />
+    <meta
+        property="og:description"
+        content="Watch movies, anime, and TV shows online."
+    />
+    <meta property="og:type" content="website" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&family=Sen:wght@400;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css">
+    <title>Zyro movies</title>
+</head>
+
+<body>
+
+    <div class="navbar">
+        <div class="navbar-container">
+            <div class="logo-container">
+                <h1 class="logo"><a href="index.html" style="color: inherit; text-decoration: none;">
+                    ZyroMovies
+                  </a>
+            </div>
+            <div class="search-container">
+                <input
+                    type="text"
+                    id="search-input"
+                     class="search-input"
+                    placeholder="Search movies, anime, shows..."
+                    autocomplete="off"
+                /> 
+                <button id="search-button" class="search-button">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="content-container">
+            <div id="banner-slider-root" class="banner-slider-root" style="display: none;"></div>
+            <div id="search-results-container" class="movie-list-container" style="display: none;">
+                <h1 class="movie-list-title">SEARCH RESULTS</h1>
+                <div class="movie-list-wrapper">
+                    <div id="search-results" class="movie-list">
+                    </div>
+                </div>
+            </div>
+            <div id="dynamic-lists-root"></div>
+     </div>
+    <script src="app.js"></script>
+</body>
+
+</html>

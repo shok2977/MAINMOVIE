@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alternate Language | ZyroMovies</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&family=Sen:wght@400;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css"
+    />
+    <style>
+      /* Make injected Fluid Player responsive */
+      #fluid-player-container {
+        width: 100%;
+        max-width: 100%;
+      }
+      #fluid-player-container video,
+      #fluid-player-container iframe,
+      #fluid-player-container .fluid_video_wrapper,
+      #fluid-player-container .fluid_video_wrapper video {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+      }
+    </style>
+  </head>
+  <body class="player-body">
+    <div class="navbar">
+      <div class="navbar-container">
+        <div class="logo-container">
+          <a href="index.html" style="text-decoration: none; color: black;">
+            <h1 class="logo">ZyroMovies</h1>
+          </a>
+        </div>
+        <div class="menu-container">
+          <ul class="menu-list">
+            <li class="menu-list-item active">Alternate Language</li>
+          </ul>
+        </div>
+        <div class="search-container">
+          <a href="javascript:history.back()" class="admin-link">Back</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container player-container">
+      <div class="player-content">
+        <div class="player-meta">
+          <h1 id="alt-player-title" class="player-title">Loading...</h1>
+          <p id="alt-player-language" class="player-overview"></p>
+        </div>
+
+        <div id="player-languages" class="player-languages"></div>
+
+        <div id="player-episodes" class="player-episodes">
+          <!-- Episodes list for TV/Anime downloads will appear here -->
+        </div>
+
+        <div id="fluid-player-container" class="player-embed-wrapper">
+          <!-- Fluid player script for selected language will be injected here -->
+        </div>
+      </div>
+    </div>
+
+    <script src="player-lang.js"></script>
+  </body>
+</html>
+
