@@ -22,7 +22,12 @@ const MONGO_URI =
 // In your machine this matches nslookup's DNS server (127.0.2.2).
 
 
-await mongoose.connect(MONGO_URI);
+try {
+  await mongoose.connect(MONGO_URI);
+  console.log("✅ MongoDB Connected");
+} catch (err) {
+  console.error("❌ MongoDB Connection Error:", err);
+}
 
 const movieSchema = new mongoose.Schema({
   key: String,
