@@ -16,13 +16,46 @@ app.use(express.static(__dirname));
 
 // WARNING: rotate this password in Atlas, never keep real creds in code for production.
 const MONGO_URI =
+  process.env.MONGODB_URI ||
+  process.env.MONGO_URI ||
   "mongodb+srv://Aditya:Aditya@cap.nwkww.mongodb.net/cap?retryWrites=true&w=majority";
 
-// Some networks (or Node DNS) may fail SRV lookups unless we force the resolver.
-// In your machine this matches nslookup's DNS server (127.0.2.2).
-dns.setServers(["127.0.2.2"]);
+// Render (and some ISPs) can refuse SRV DNS queries. We set well-known resolvers
+// and retry so the web service can still start even if DB is temporarily down.
+try {
+  if (typeof dns.setDefaultResultOrder === "function") {
+    dns.setDefaultResultOrder("ipv4first");
+  }
+  if (typeof dns.setServers === "function") {
+    dns.setServers(["1.1.1.1", "8.8.8.8"]);
+  }
+} catch (_) {}
 
-await mongoose.connect(MONGO_URI);
+async function connectMongoWithRetry() {
+  const maxAttempts = 5;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await mongoose.connect(MONGO_URI, {
+        serverSelectionTimeoutMS: 15000,
+      });
+      console.log("✅ MongoDB Connected");
+      return;
+    } catch (err) {
+      console.error(
+        `❌ MongoDB Connection Error (attempt ${attempt}/${maxAttempts}):`,
+        err?.message ?? err
+      );
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 2000 * attempt));
+      }
+    }
+  }
+  console.error("❌ MongoDB not connected. API will run with empty data until DB is reachable.");
+}
+
+connectMongoWithRetry().catch((e) => {
+  console.error("❌ MongoDB connect routine failed:", e?.message ?? e);
+});
 
 const movieSchema = new mongoose.Schema({
   key: String,
@@ -62,6 +95,11 @@ const Banner = mongoose.model("Banner", bannerSchema);
 
 // All data for front-end (movies by key, lists by name, banners array)
 app.get("/api/data", async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    res.json({ movies: {}, lists: {}, listOrder: [], banners: [] });
+    return;
+  }
+
   const [movies, listsFromDb, banners] = await Promise.all([
     Movie.find().lean(),
     List.find().lean(),
@@ -279,7 +317,7 @@ app.delete("/api/banner/:id", async (req, res) => {
   res.json({ ok: true });
 });
 
-const PORT = 3001;
+const PORT = Number(process.env.PORT) || 3001;
 
 // Open the website when someone visits root.
 app.get("/", (req, res) => {
