@@ -684,14 +684,11 @@ body {
 
 .movie-list-container {
   padding: 0 20px;
-  position: relative;
 }
 
 .movie-list-wrapper {
   position: relative;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-behavior: smooth;
+  overflow: hidden;
 }
 
 .movie-list {
@@ -767,34 +764,6 @@ body {
   color: lightgray;
   opacity: 0.5;
   cursor: pointer;
-}
-
-.movie-list-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 5;
-  width: 44px;
-  height: 88px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  font-size: 40px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.movie-list-nav:hover {
-  background: rgba(0, 0, 0, 0.75);
-}
-
-.movie-list-nav-left {
-  left: 6px;
-}
-
-.movie-list-nav-right {
-  right: 6px;
 }
 
 .container.active {

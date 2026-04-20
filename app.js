@@ -113,18 +113,6 @@ function appendMovieListSection(root, data, listTitle, movieKeys) {
   const wrapper = document.createElement("div");
   wrapper.className = "movie-list-wrapper";
 
-  const leftBtn = document.createElement("button");
-  leftBtn.type = "button";
-  leftBtn.className = "movie-list-nav movie-list-nav-left";
-  leftBtn.setAttribute("aria-label", "Scroll left");
-  leftBtn.innerHTML = "‹";
-
-  const rightBtn = document.createElement("button");
-  rightBtn.type = "button";
-  rightBtn.className = "movie-list-nav movie-list-nav-right";
-  rightBtn.setAttribute("aria-label", "Scroll right");
-  rightBtn.innerHTML = "›";
-
   const listEl = document.createElement("div");
   listEl.className = "movie-list";
 
@@ -136,6 +124,7 @@ function appendMovieListSection(root, data, listTitle, movieKeys) {
     item.className = "movie-list-item";
     item.dataset.movieKey = movieKey;
     item.addEventListener("click", () => navigateToMoviePlayer(movie, movieKey));
+
     const img = document.createElement("img");
     img.className = "movie-list-item-img";
     img.src = movie.posterUrl || "img/1.jpeg";
@@ -161,17 +150,8 @@ function appendMovieListSection(root, data, listTitle, movieKeys) {
     listEl.appendChild(item);
   });
 
-  leftBtn.addEventListener("click", () => {
-    wrapper.scrollBy({ left: -900, behavior: "smooth" });
-  });
-  rightBtn.addEventListener("click", () => {
-    wrapper.scrollBy({ left: 900, behavior: "smooth" });
-  });
-
   wrapper.appendChild(listEl);
   container.appendChild(wrapper);
-  container.appendChild(leftBtn);
-  container.appendChild(rightBtn);
   root.appendChild(container);
 }
 

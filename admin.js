@@ -323,7 +323,6 @@ function openEditMovie(key) {
   const titleEl = document.getElementById("edit-movie-title");
   const listEl = document.getElementById("edit-movie-languages");
   const editLangAddBtnEl = document.getElementById("edit-movie-add-language");
-  const isDownloadSource = movie.sourceKind === "download";
   // Treat as series (show per-episode Fluid code fields) if seasons exist.
   const isDownloadSeries =
     Array.isArray(movie.seasons) && movie.seasons.length;
@@ -331,52 +330,37 @@ function openEditMovie(key) {
   if (titleEl) {
     titleEl.textContent = movie.title || "Untitled";
   }
-  // Open edit section immediately so UI never looks "dead" even if deeper render fails.
-  switchSection("dashboard-section"); // ensure valid sections exist
-  switchSection("edit-movie-section");
-
   if (listEl) {
-    listEl.style.display = isDownloadSource ? "" : "none";
-    if (editLangAddBtnEl) editLangAddBtnEl.style.display = isDownloadSource ? "" : "none";
+    listEl.style.display = "";
+    if (editLangAddBtnEl) editLangAddBtnEl.style.display = "";
     listEl.innerHTML = "";
-    if (!isDownloadSource) {
-      // No language editor for non-download sources.
-      const info = document.createElement("p");
-      info.className = "admin-help-text";
-      info.textContent = "Language/Fluid edit is available only for downloads source titles.";
-      listEl.appendChild(info);
-      listEl.style.display = "";
-      if (editLangAddBtnEl) editLangAddBtnEl.style.display = "none";
-    }
-    if (isDownloadSource) {
-      const langs = Array.isArray(movie.languages) ? movie.languages : [];
-      if (!langs.length) {
-        if (isDownloadSeries) {
-          // Series downloads always need at least "Original" language.
-          listEl.appendChild(
-            buildLanguageRow(
-              { name: "Original" },
-              { showScript: false, langIndex: 0, includeEpisodesPlaceholder: true }
-            )
-          );
-        } else {
-          const info = document.createElement("p");
-          info.className = "admin-help-text";
-          info.textContent =
-            'No extra languages yet. Click "Add language" to create one.';
-          listEl.appendChild(info);
-        }
+    const langs = Array.isArray(movie.languages) ? movie.languages : [];
+    if (!langs.length) {
+      if (isDownloadSeries) {
+        // Series downloads always need at least "Original" language.
+        listEl.appendChild(
+          buildLanguageRow(
+            { name: "Original" },
+            { showScript: false, langIndex: 0, includeEpisodesPlaceholder: true }
+          )
+        );
       } else {
-        langs.forEach((lang, langIndex) => {
-          listEl.appendChild(
-            buildLanguageRow(lang, {
-              showScript: !isDownloadSeries,
-              langIndex,
-              includeEpisodesPlaceholder: isDownloadSeries,
-            })
-          );
-        });
+        const info = document.createElement("p");
+        info.className = "admin-help-text";
+        info.textContent =
+          'No extra languages yet. Click "Add language" to create one.';
+        listEl.appendChild(info);
       }
+    } else {
+      langs.forEach((lang, langIndex) => {
+        listEl.appendChild(
+          buildLanguageRow(lang, {
+            showScript: !isDownloadSeries,
+            langIndex,
+            includeEpisodesPlaceholder: isDownloadSeries,
+          })
+        );
+      });
     }
   }
 
@@ -385,18 +369,14 @@ function openEditMovie(key) {
   const episodesHelp = document.getElementById("edit-episodes-help");
   const episodesContainer = document.getElementById("edit-download-episodes");
   if (episodesTitle && episodesHelp && episodesContainer) {
-    if (isDownloadSource && isDownloadSeries) {
+    if (isDownloadSeries) {
       // For series downloads: hide the shared episodes section and render episodes under each language row.
       episodesTitle.style.display = "none";
       episodesHelp.style.display = "none";
       episodesContainer.style.display = "none";
       episodesContainer.innerHTML = "";
 
-      try {
-        rebuildDownloadEpisodesInputs(movie);
-      } catch (err) {
-        console.error("Failed to render episode editors:", err);
-      }
+      rebuildDownloadEpisodesInputs(movie);
     } else {
       episodesTitle.style.display = "none";
       episodesHelp.style.display = "none";
@@ -404,6 +384,9 @@ function openEditMovie(key) {
       episodesContainer.style.display = "none";
     }
   }
+
+  switchSection("dashboard-section"); // ensure valid sections exist
+  switchSection("edit-movie-section");
 }
 
 function renderLists() {
@@ -615,19 +598,6 @@ async function fetchTmdbTvSeasons(tmdbId) {
     } catch (_) {}
   }
   return seasons;
-}
-
-async function detectTmdbType(tmdbId) {
-  const base = "https://api.themoviedb.org/3";
-  const movieRes = await fetch(
-    `${base}/movie/${tmdbId}?api_key=${TMDB_API_KEY}&language=en-US`
-  );
-  if (movieRes.ok) return "movie";
-  const tvRes = await fetch(
-    `${base}/tv/${tmdbId}?api_key=${TMDB_API_KEY}&language=en-US`
-  );
-  if (tvRes.ok) return "tv";
-  throw new Error("TMDB ID not found as movie or TV show.");
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -869,7 +839,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           openEditMovie(key);
         } catch (err) {
           console.error("Failed to open edit panel for key:", key, err);
-          alert("Edit panel open nahi ho saka. Console error check karein.");
         }
       }
     });
@@ -882,56 +851,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       addTitleSuccess.textContent = "";
 
       const tmdbId = (document.getElementById("tmdb-id")?.value || "").trim();
-      const selectedType =
-        document.getElementById("content-type")?.value || "movie";
+      const type = document.getElementById("content-type")?.value || "movie";
       const listName = document.getElementById("assign-list")?.value || "";
       const sourceKind =
         document.getElementById("source-kind")?.value || "vidsrc";
       const downloadScript =
         document.getElementById("download-fluid-script")?.value || "";
-      const epContainer = document.getElementById("download-episodes-container");
 
       if (!tmdbId || !listName) {
         addTitleError.textContent = "TMDB ID and list are required.";
         return;
       }
-      let type = selectedType;
-      let detectedDownloadSeasons = [];
-      if (sourceKind === "download") {
-        try {
-          if (
-            currentDownloadEpisodesTmdb === tmdbId &&
-            Array.isArray(currentDownloadEpisodesSeasons)
-          ) {
-            detectedDownloadSeasons = currentDownloadEpisodesSeasons;
-          } else {
-            detectedDownloadSeasons = await fetchTmdbTvSeasons(tmdbId);
-            currentDownloadEpisodesTmdb = tmdbId;
-            currentDownloadEpisodesSeasons = detectedDownloadSeasons;
-          }
-          const hasSeriesByTmdb =
-            Array.isArray(detectedDownloadSeasons) &&
-            detectedDownloadSeasons.length > 0;
-          const hasSeriesRows =
-            !!epContainer &&
-            epContainer.querySelectorAll(".admin-episode-row").length > 0;
-          const isSeries = hasSeriesByTmdb || hasSeriesRows;
-
-          if (isSeries) {
-            type =
-              selectedType === "anime" || selectedType === "animeMovie"
-                ? "anime"
-                : "tv";
-          } else {
-            type =
-              selectedType === "anime" || selectedType === "animeMovie"
-                ? "animeMovie"
-                : "movie";
-          }
-        } catch (err) {
-          addTitleError.textContent = err?.message || "TMDB type detect failed.";
-          return;
-        }
+      if (
+        sourceKind === "download" &&
+        (type === "movie" || type === "animeMovie") &&
+        !downloadScript.trim()
+      ) {
+        addTitleError.textContent =
+          "For downloads, Fluid Player code is required for movies.";
+        return;
       }
 
       let meta;
@@ -939,11 +877,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       try {
         meta = await fetchTmdbDetails(tmdbId, type);
         if (type === "tv" || type === "anime") {
-          seasons =
-            Array.isArray(detectedDownloadSeasons) &&
-            detectedDownloadSeasons.length
-              ? detectedDownloadSeasons
-              : await fetchTmdbTvSeasons(tmdbId);
+          seasons = await fetchTmdbTvSeasons(tmdbId);
         }
       } catch (err) {
         console.error(err);
@@ -968,6 +902,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (sourceKind === "download") {
         if (type === "tv" || type === "anime") {
           // Per-episode codes from UI
+          const epContainer = document.getElementById(
+            "download-episodes-container"
+          );
           const epMap = {};
           if (epContainer) {
             const rows = Array.from(
@@ -989,11 +926,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           // Backward compatibility
           movieRecord.downloadEpisodes = epMap;
         } else {
-          if (!downloadScript.trim()) {
-            addTitleError.textContent =
-              "For downloads movies, Fluid Player code is required.";
-            return;
-          }
           // Movie / Anime movie: single Fluid code via languages
           movieRecord.languages = [
             {
@@ -1106,7 +1038,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const data = loadMovieData();
       const movie = data.movies[currentEditMovieKey];
       if (!movie) return;
-      if (movie.sourceKind !== "download") return;
 
       const isDownloadSeries =
         Array.isArray(movie.seasons) &&
@@ -1143,15 +1074,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const data = loadMovieData();
       const movie = data.movies[currentEditMovieKey];
       if (!movie) return;
-      if (movie.sourceKind !== "download") {
-        await upsertMovie(movie);
-        await refreshData();
-        renderDashboard();
-        renderLists();
-        currentEditMovieKey = null;
-        switchSection("dashboard-section");
-        return;
-      }
 
       const isDownloadSeries =
         Array.isArray(movie.seasons) && movie.seasons.length;
@@ -1225,7 +1147,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!currentEditMovieKey) return;
         const data = loadMovieData();
         const movie = data.movies[currentEditMovieKey];
-        if (!movie || movie.sourceKind !== "download") return;
 
         const row = target.closest(".admin-language-row");
         if (row) row.remove();
@@ -1247,17 +1168,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (sourceKindSelect && downloadFields) {
     const updateDownloadVisibility = () => {
       const sourceVal = sourceKindSelect.value;
+      const typeVal = contentTypeSelect?.value || "movie";
       // Show/hide overall download block based on source
       downloadFields.style.display = sourceVal === "download" ? "block" : "none";
 
       if (downloadMovieOnlyFields) {
-        const hasSeriesData =
-          Array.isArray(currentDownloadEpisodesSeasons) &&
-          currentDownloadEpisodesSeasons.length > 0;
-        const shouldShowMovieCode =
-          sourceVal === "download" &&
-          !hasSeriesData;
-        downloadMovieOnlyFields.style.display = shouldShowMovieCode ? "block" : "none";
+        // If type is TV/Anime, permanently remove the big box so it can never show for series.
+        if (typeVal === "tv" || typeVal === "anime") {
+          downloadMovieOnlyFields.remove();
+        } else {
+          // Movie / anime movie: show big box only when downloads is selected
+          downloadMovieOnlyFields.style.display =
+            sourceVal === "download" ? "block" : "none";
+        }
       }
     };
     sourceKindSelect.addEventListener("change", () => {
@@ -1282,14 +1205,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       !epContainer
     ) {
       if (epContainer) epContainer.innerHTML = "";
-      if (sourceVal !== "download" || !tmdbVal) {
-        currentDownloadEpisodesTmdb = null;
-        currentDownloadEpisodesSeasons = null;
-      }
-      if (downloadMovieOnlyFields) {
-        downloadMovieOnlyFields.style.display =
-          sourceVal === "download" && tmdbVal ? "block" : "none";
-      }
       return;
     }
 
@@ -1311,9 +1226,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (Array.isArray(seasons) && seasons.length > 0) {
         // This TMDB id clearly has seasons/episodes => treat as series.
-        // Hide movie-only field and show per-episode fields.
+        // Remove big movie-only Fluid field so only per-episode fields remain.
         if (downloadMovieOnlyFields) {
-          downloadMovieOnlyFields.style.display = "none";
+          downloadMovieOnlyFields.remove();
         }
         seasons.forEach((s) => {
           const seasonHeader = document.createElement("h4");
@@ -1342,35 +1257,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
     } catch (_) {
-      // If TMDB season lookup fails (network/rate-limit), keep at least movie-code input visible.
-      if (epContainer) epContainer.innerHTML = "";
-      currentDownloadEpisodesTmdb = tmdbVal;
-      currentDownloadEpisodesSeasons = [];
-      if (downloadMovieOnlyFields && sourceVal === "download") {
-        downloadMovieOnlyFields.style.display = "block";
-      }
+      // ignore UI errors
     }
   }
 
-  let tmdbLookupTimer = null;
-  const scheduleDownloadEpisodesLookup = () => {
-    if (tmdbLookupTimer) clearTimeout(tmdbLookupTimer);
-    tmdbLookupTimer = setTimeout(() => {
-      currentDownloadEpisodesTmdb = null;
-      currentDownloadEpisodesSeasons = null;
-      maybeLoadDownloadEpisodes();
-    }, 350);
-  };
-
   if (sourceKindSelect) {
     sourceKindSelect.addEventListener("change", () => {
-      if (sourceKindSelect.value === "download") {
-        scheduleDownloadEpisodesLookup();
-      } else {
-        if (tmdbLookupTimer) clearTimeout(tmdbLookupTimer);
-        currentDownloadEpisodesTmdb = null;
-        currentDownloadEpisodesSeasons = null;
-      }
       maybeLoadDownloadEpisodes();
     });
   }
@@ -1382,25 +1274,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
   if (tmdbInput) {
-    tmdbInput.addEventListener("input", () => {
-      if (!sourceKindSelect || sourceKindSelect.value !== "download") return;
-      const val = tmdbInput.value?.trim() || "";
-      if (!val) {
-        currentDownloadEpisodesTmdb = null;
-        currentDownloadEpisodesSeasons = null;
-        maybeLoadDownloadEpisodes();
-        return;
-      }
-      scheduleDownloadEpisodesLookup();
-    });
-    tmdbInput.addEventListener("paste", () => {
-      if (!sourceKindSelect || sourceKindSelect.value !== "download") return;
-      scheduleDownloadEpisodesLookup();
-    });
-    tmdbInput.addEventListener("change", () => {
-      if (!sourceKindSelect || sourceKindSelect.value !== "download") return;
-      scheduleDownloadEpisodesLookup();
-    });
     tmdbInput.addEventListener("blur", () => {
       currentDownloadEpisodesTmdb = null;
       currentDownloadEpisodesSeasons = null;

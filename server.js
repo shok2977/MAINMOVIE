@@ -20,14 +20,9 @@ const MONGO_URI =
 
 // Some networks (or Node DNS) may fail SRV lookups unless we force the resolver.
 // In your machine this matches nslookup's DNS server (127.0.2.2).
+dns.setServers(["127.0.2.2"]);
 
-
-try {
-  await mongoose.connect(MONGO_URI);
-  console.log("✅ MongoDB Connected");
-} catch (err) {
-  console.error("❌ MongoDB Connection Error:", err);
-}
+await mongoose.connect(MONGO_URI);
 
 const movieSchema = new mongoose.Schema({
   key: String,

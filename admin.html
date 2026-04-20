@@ -144,9 +144,8 @@
               Add Movie / Anime / TV
             </h2>
             <p class="admin-help-text">
-              Option 1 uses <strong>vidsrc</strong>, option 2 uses <strong>downloads (Fluid Player)</strong>,
-              option 3 uses <strong>Streammafia</strong>, and option 4 uses <strong>Mapple.mov</strong>
-              (TMDB ID based embed).
+              Option 1 uses <strong>vidsrc</strong> (only TMDB ID needed). Option 2 uses
+              <strong>downloads (Fluid Player)</strong> where you paste your own player code.
             </p>
 
             <form id="add-title-form" class="admin-form">
@@ -154,8 +153,6 @@
               <select id="source-kind" class="admin-input">
                 <option value="vidsrc">1) Add movie from vidsrc</option>
                 <option value="download">2) Add movie from downloads (Fluid Player)</option>
-                <option value="streammafia">3) Add movie from Streammafia</option>
-                <option value="mapple">4) Add movie from Mapple.mov</option>
               </select>
 
               <label class="admin-label" for="tmdb-id">TMDB ID</label>
@@ -293,7 +290,8 @@
             <h2 class="admin-section-title">Edit Title</h2>
 
             <p class="admin-help-text">
-              For downloads (Fluid Player), you can manage episode-wise scripts below.
+              For downloads (Fluid Player), you can manage per-language scripts below. For TV/Anime
+              downloads, you can also set per-episode Fluid Player codes.
             </p>
             <h3 id="edit-movie-title" class="admin-section-subtitle"></h3>
 
@@ -305,7 +303,6 @@
               type="button"
               id="edit-movie-add-language"
               class="admin-secondary-btn"
-              style="display: none;"
             >
               Add language
             </button>

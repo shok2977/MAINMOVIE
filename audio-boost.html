@@ -12,6 +12,58 @@
     />
   </head>
   <body class="player-body">
+    <div class="navbar">
+      <div class="navbar-container">
+        <div class="logo-container">
+          <a href="index.html" style="text-decoration: none; color: black;">
+            <h1 class="logo">ZyroMovies</h1>
+          </a>
+        </div>
+        <div class="menu-container">
+          <ul class="menu-list">
+            <li class="menu-list-item active">Audio Boost</li>
+          </ul>
+        </div>
+        <div class="search-container">
+          <a href="player.html" class="admin-link">Back to Player</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container player-container">
+      <div class="player-content">
+        <div class="player-meta">
+          <h1 class="player-title">Audio Boost Demo</h1>
+          
+          <p class="player-overview">
+          
+          </p>
+        </div>
+
+        <div class="player-embed-wrapper">
+          <video
+            id="boost-video"
+            controls
+            width="100%"
+            height="500"
+          >
+            <source src="TutorialVideo.mp4" type="video/mp4" />
+          </video>
+        </div>
+
+        <div style="margin-top: 16px; text-align: center;">
+          <a
+            href="https://chromewebstore.google.com/detail/volume-booster/ejkiikneibegknkgimmihdpcbcedgmpo"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="player-audio-boost-button"
+            style="display: inline-block; padding: 10px 20px; background-color: #e50914; color: #fff; border-radius: 4px; border: none; font-weight: 500; cursor: pointer; text-decoration: none;"
+          >
+            extinson
+          </a>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
 

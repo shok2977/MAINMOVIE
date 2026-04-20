@@ -1,33 +1,25 @@
 const STORAGE_KEY = "flakes_movies_data";
-
-// Default = Google demo tag only so local testing shows a real preroll. Production: put YOUR
-// Ad Manager / GAM / third-party VAST URL here — the player does not whitelist domains; IMA loads
-// whatever tag you give. If the server returns empty VAST (no <Ad>), you get no ad on ANY tag.
-// Optional test override: player.html?key=...&adtag=ENCODED_FULL_TAG_URL
+// VAST tag base. We append correlator at runtime to avoid empty correlator issues.
 const VAST_TAG_URL_BASE =
-  "https://pubads.g.doubleclick.net/gampad/ads?sz=400x300&iu=/124319096/external/single_ad_samples&ciu_szs=300x250&impl=s&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=deployment%3Ddevsite&correlator=";
+  "https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/single_ad_samples&ciu_szs=300x250&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ct%3Dlinear&correlator="; // Replace with your VAST tag URL
 
 const API_BASE = "http://localhost:3001";
 
-function getEffectiveVastTagBase() {
-  const raw = getQueryParam("adtag");
-  if (raw && String(raw).trim()) {
-    try {
-      return decodeURIComponent(String(raw).trim());
-    } catch (_) {
-      return String(raw).trim();
+async function fetchVastMediaFromServer(vastTagUrl, debugLog) {
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/vast/media?tag=${encodeURIComponent(vastTagUrl)}`
+    );
+    if (!res.ok) {
+      if (typeof debugLog === "function") {
+        debugLog("VAST media fetch failed", { status: res.status, ok: res.ok });
+      }
+      return null;
     }
+    return await res.json();
+  } catch (_) {
+    return null;
   }
-  return String(VAST_TAG_URL_BASE || "").trim();
-}
-
-function buildVastTagUrl() {
-  const base = getEffectiveVastTagBase();
-  if (!base) return "";
-  const correlator = `${Date.now()}${Math.floor(Math.random() * 1e9)}`;
-  if (base.includes("correlator=")) return base + correlator;
-  const sep = base.includes("?") ? "&" : "?";
-  return `${base}${sep}correlator=${encodeURIComponent(correlator)}`;
 }
 
 async function fetchAllData() {
@@ -77,19 +69,6 @@ function buildVidsrcUrl(movie, season, episode, animeDub) {
   return `https://vidsrc.icu/embed/movie/${id}`;
 }
 
-const STREAMMAFIA_QUERY =
-  "?autoplay=false&autonext=true&audio=true&title=true&download=false&setting=true&episodelist=true&watchparty=false&chromecast=true&pip=true&nextbutton=true&hidecontrols=false&primarycolor=f00000&secondarycolor=000000&iconcolor=43ff0f&iconsize=1&logowidth=100px&font=Roboto&fontcolor=ffffff&fontsize=20&opacity=0.50&glasscolor=000000&glassopacity=65&glassblur=20&subtitle=Off&subdelay=0&subtextsize=45&subtextcolor=ffffff&subcapitalize=false&subbold=false&subfont=Roboto&subbgenabled=false&subbgcolor=000000&subbgopacity=0&subbgblur=0";
-
-function buildStreammafiaUrl(movie, season, episode) {
-  const id = movie.tmdbId;
-  if (movie.type === "movie" || movie.type === "animeMovie") {
-    return `https://embed.streammafia.to/embed/movie/${id}${STREAMMAFIA_QUERY}`;
-  }
-  const s = season !== undefined ? season : 1;
-  const e = episode !== undefined ? episode : 1;
-  return `https://embed.streammafia.to/embed/tv/${id}/${s}/${e}${STREAMMAFIA_QUERY}`;
-}
-
 function computeAnimeLinearEpisode(seasons, seasonNum, episodeNum) {
   let linear = 0;
   for (const s of seasons || []) {
@@ -109,158 +88,207 @@ function showContent(url) {
   box.innerHTML = `<iframe src="${url}" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
 }
 
-// Short MP4 so Video.js + contrib-ads have real content; preroll runs before this plays.
-const IMA_PLACEHOLDER_CONTENT =
-  "https://storage.googleapis.com/gvabox/media/samples/stock.mp4";
-
 function runAdThenContent(url) {
   const box = document.getElementById("player-box");
   if (!box) return;
 
+  // contrib-ads preroll flow ko start karne ke liye video element ko "loadstart"
+  // dekhne ki zarurat hoti hai. Humein real content iframe baad me replace karna hai,
+  // isliye yahan ek dummy MP4 set karte hain.
+  const DUMMY_VIDEO_URL = "https://vjs.zencdn.net/v/oceans.mp4";
+
+  // Clear player box and insert video.js player
   box.innerHTML = `
     <video
       id="ad-player"
       class="video-js vjs-default-skin vjs-big-play-centered"
       controls
-      playsinline
       width="100%"
       height="500"
     ></video>
   `;
 
-  const vastBaseForCheck = getEffectiveVastTagBase();
+  // Check if VAST tag is defined
   const hasVast =
-    vastBaseForCheck && vastBaseForCheck !== "https://pubads.g.doubleclick.net/gampad/ads?sz=400x300&iu=/124319096/external/single_ad_samples&ciu_szs=300x250&impl=s&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=deployment%3Ddevsite&correlator=";
+    VAST_TAG_URL_BASE && VAST_TAG_URL_BASE !== "YOUR_VAST_TAG_URL";
   if (!hasVast) {
     showContent(url);
     return;
   }
 
-  const vastTagUrl = buildVastTagUrl();
-  if (!vastTagUrl) {
-    showContent(url);
-    return;
-  }
-
-  const imaPageUrl = (function () {
-    try {
-      const h = String(window.location.href || "");
-      if (h && !h.startsWith("file:")) return h;
-    } catch (_) {}
-    return "http://localhost:3001/player.html";
-  })();
-
-  let shownContent = false;
+  // Initialize video.js player with autoplay and muted (required for Chrome autoplay)
   const player = videojs("ad-player", {
-    controls: true,
     autoplay: true,
     muted: true,
-    playsinline: true,
-    preload: "auto",
-    fluid: false,
-    width: "100%",
-    height: 500,
+    controls: true,
   });
 
-  function safeShowContent(/* reason */) {
-    if (shownContent) return;
-    shownContent = true;
-    try {
-      player.dispose();
-    } catch (_) {}
-    try {
-      showContent(url);
-    } catch (_) {}
-  }
+  player.ready(async function () {
+    let shownContent = false;
+    let adStarted = false;
+    let manualPlayback = false;
 
-  player.ready(function () {
-    let imaPluginOk = true;
-    if (typeof videojs !== "undefined" && typeof videojs.getPlugin === "function") {
-      imaPluginOk = typeof videojs.getPlugin("ima") === "function";
-    }
-    if (typeof google === "undefined" || !google.ima || !imaPluginOk) {
-      safeShowContent("ima-missing");
-      return;
-    }
+    // In-page debug overlay (console auto-clear ho sakta hai)
+    const debugEl = document.createElement("div");
+    debugEl.id = "vast-debug";
+    debugEl.style.cssText =
+      "position:absolute;bottom:0;left:0;right:0;max-height:40%;overflow:auto;background:rgba(0,0,0,.75);color:#fff;font-family:monospace;font-size:12px;padding:8px;z-index:99999;white-space:pre-wrap;";
+    try {
+      box.style.position = "relative";
+      box.appendChild(debugEl);
+    } catch (_) {}
 
-    let allAdsCompletedBound = false;
-    function bindAllAdsCompleted(ev) {
-      if (allAdsCompletedBound) return;
+    function debugLog(msg, extra) {
+      const t = new Date().toISOString().replace("T", " ").replace("Z", "");
+      const line =
+        t + " " + msg + (extra !== undefined ? " " + JSON.stringify(extra) : "");
       try {
-        const ctrl = player.ima;
-        const mgr =
-          (ev && ev.adsManager) ||
-          (ctrl && ctrl.getAdsManager && ctrl.getAdsManager());
-        if (!mgr || !mgr.addEventListener) return;
-        allAdsCompletedBound = true;
-        mgr.addEventListener(
-          google.ima.AdEvent.Type.ALL_ADS_COMPLETED,
-          function () {
-            safeShowContent("ALL_ADS_COMPLETED");
-          }
-        );
+        // eslint-disable-next-line no-console
+        console.log("VASTDBG:", msg, extra ?? "");
+      } catch (_) {}
+      try {
+        debugEl.textContent = debugEl.textContent
+          ? debugEl.textContent + "\n" + line
+          : line;
       } catch (_) {}
     }
 
-    player.src({
-      src: IMA_PLACEHOLDER_CONTENT,
-      type: "video/mp4",
+    // Attach event listeners BEFORE calling vastClient (avoid missing fast events)
+    player.on("vast.adStart", () => {
+      adStarted = true;
+      debugLog("vast.adStart");
+      try {
+        const adUnit = player.vast && player.vast.adUnit;
+        const src =
+          adUnit && typeof adUnit.getSrc === "function" ? adUnit.getSrc() : null;
+        debugLog("adUnit", {
+          adUnitType: adUnit && adUnit.type,
+          adSrcType: src ? typeof src : null,
+        });
+      } catch (_) {}
     });
 
+    player.on("vast.adEnd", () => {
+      debugLog("vast.adEnd");
+      safeShowContent();
+    });
+
+    player.on("vast.adError", (e) => {
+      debugLog("vast.adError", { error: e?.error ?? e });
+      safeShowContent();
+    });
+
+    player.on("vast.adsCancel", () => {
+      debugLog("vast.adsCancel");
+      safeShowContent();
+    });
+
+    player.on("vast.contentStart", () => {
+      debugLog("vast.contentStart");
+    });
+
+    // videojs-contrib-ads events (preroll flow)
+    player.on("adstart", () => debugLog("contrib-ads adstart"));
+    player.on("adend", () => debugLog("contrib-ads adend"));
+    player.on("adserror", (e) => debugLog("contrib-ads adserror", e));
+    player.on("adscanceled", (e) => debugLog("contrib-ads adscanceled", e));
+
     try {
-      player.ima({
-        id: "ad-player",
-        adTagUrl: vastTagUrl,
-        vpaidMode: google.ima.ImaSdkSettings.VpaidMode.ENABLED,
-        adsRequest: {
-          pageUrl: imaPageUrl,
-        },
-        contribAdsSettings: {
-          timeout: 30000,
-          prerollTimeout: 20000,
-        },
+      const vastTagUrl = `${VAST_TAG_URL_BASE}${Date.now()}${Math.floor(
+        Math.random() * 1e9
+      )}`;
+
+      debugLog("VAST init", {
+        vastTagUrl,
+        vastClientType: typeof player.vastClient,
       });
-    } catch (_) {
-      safeShowContent("ima-plugin");
+
+      // Prefer server-side extracted mp4 for more reliable HTML5 playback.
+      const manualMedia = await fetchVastMediaFromServer(vastTagUrl, debugLog);
+      if (manualMedia?.media?.url) {
+        manualPlayback = true;
+        debugLog("Using server VAST media", manualMedia);
+        player.src({
+          src: manualMedia.media.url,
+          type: manualMedia.media.type || "video/mp4",
+        });
+        try {
+          await player.play();
+        } catch (_) {
+          // If browser blocks autoplay, user can press play.
+        }
+
+        const durMs =
+          typeof manualMedia.durationSeconds === "number" &&
+          manualMedia.durationSeconds > 0
+            ? manualMedia.durationSeconds * 1000
+            : 12000;
+
+        // In case media doesn't fire "ended" correctly, fallback by duration.
+        setTimeout(() => safeShowContent("manual ad timeout"), durMs + 500);
+        player.one("ended", () => safeShowContent("manual ad ended"));
+        return;
+      }
+
+      if (typeof player.vastClient !== "function") {
+        debugLog("VAST plugin method missing; fallback to content.");
+        showContent(url);
+        return;
+      }
+
+      // Attach Google test VAST tag
+      try {
+        // Fallback source to provide a loadstart/content context.
+        player.src({ src: DUMMY_VIDEO_URL, type: "video/mp4" });
+      } catch (_) {}
+
+      player.vastClient({
+        adTagUrl: vastTagUrl,
+        playAdAlways: true,
+        adCancelTimeout: 12000,
+        adsEnabled: true,
+        // Flash fallback se black screen / invisible creatives ho sakte hain.
+        // Aapke project me SWF file present nahi hai, isliye HTML5 force karte hain.
+        preferredTech: "html5",
+        verbosity: 3,
+      });
+    } catch (e) {
+      debugLog("VAST init failed; fallback to content.", {
+        error: e?.message ?? String(e),
+      });
+      // If VAST fails, load content immediately
+      showContent(url);
       return;
     }
 
-    player.on("ads-manager", function (ev) {
-      bindAllAdsCompleted(ev);
-    });
-    player.one("ads-ad-started", function () {
-      bindAllAdsCompleted();
-    });
+    function safeShowContent() {
+      if (shownContent) return;
+      shownContent = true;
 
-    player.on("adserror", function () {
-      safeShowContent("adserror");
-    });
+      debugLog("safeShowContent", { adStarted });
 
-    // IMA requires AdDisplayContainer.initialize() from a user gesture on many browsers
-    // (esp. mobile). Capture phase runs before Video.js big-play-button so preroll can start.
-    const el = player.el();
-    const primeImaFromUser = function () {
       try {
-        player.ima.initializeAdDisplayContainer();
+        // Show content immediately; then cleanup player to avoid race conditions
+        // while the ad tech is transitioning.
+        showContent(url);
       } catch (_) {}
-    };
-    el.addEventListener("click", primeImaFromUser, true);
-    el.addEventListener("touchend", primeImaFromUser, {
-      capture: true,
-      passive: true,
-    });
-    el.addEventListener("keydown", primeImaFromUser, true);
 
-    try {
-      player.play().catch(function () {});
-    } catch (_) {
-      safeShowContent("ima-init");
+      try {
+        player.pause();
+        player.dispose();
+      } catch (_) {}
     }
 
+    // (duplicate handlers removed; see listeners above)
+
+    // Safety timeout: agar VAST start nahi hua, load content after ~30s
     setTimeout(function () {
+      // If already replaced with content, don't do anything.
       if (document.querySelector("#player-box iframe")) return;
-      safeShowContent("timeout");
-    }, 120000);
+      // Only fallback if VAST never started; don't cut off long ads (45s).
+      if (!adStarted && !manualPlayback)
+        safeShowContent("timeout(no vast.adStart)");
+    }, 30000);
   });
 }
 
@@ -307,6 +335,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const movieKey = getQueryParam("key");
   const titleEl = document.getElementById("player-title");
   const overviewEl = document.getElementById("player-overview");
+  const languagesEl = document.getElementById("player-languages");
 
   if (!movieKey) {
     if (titleEl) titleEl.textContent = "Not found";
@@ -355,6 +384,49 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  // Render language options (always show bar with "Original")
+  const extraLanguages = Array.isArray(movie.languages) ? movie.languages : [];
+  if (languagesEl) {
+    languagesEl.innerHTML = "";
+
+    const label = document.createElement("span");
+    label.className = "player-languages-label";
+    label.textContent = "Languages:";
+    languagesEl.appendChild(label);
+
+    const list = document.createElement("div");
+    list.className = "player-languages-list";
+
+    // Original language (default vidsrc)
+    const originalBtn = document.createElement("button");
+    originalBtn.className = "player-language-chip active";
+    originalBtn.textContent = "Original";
+    originalBtn.addEventListener("click", () => {
+      // Stay on same page (default vidsrc)
+      const url = new URL(window.location.href);
+      url.searchParams.delete("lang");
+      window.location.href = url.toString();
+    });
+    list.appendChild(originalBtn);
+
+    // Extra languages defined by admin
+    extraLanguages.forEach((lang, index) => {
+      const btn = document.createElement("button");
+      btn.className = "player-language-chip";
+      btn.textContent = lang?.name || `Language ${index + 1}`;
+      btn.addEventListener("click", () => {
+        // Use relative URL so it works on file:// and http://
+        const url = new URL("player-lang.html", window.location.href);
+        url.searchParams.set("key", movieKey);
+        url.searchParams.set("lang", String(index));
+        window.location.href = url.toString();
+      });
+      list.appendChild(btn);
+    });
+
+    languagesEl.appendChild(list);
+  }
+
   let selectedSeason = 1;
   let selectedEpisode = 1;
 
@@ -368,6 +440,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     selectedSeason = first.season_number;
     selectedEpisode = (first.episodes && first.episodes[0]?.episode_number) || 1;
   }
+
   const playEpisode = (season, episode) => {
     selectedSeason = season;
     selectedEpisode = episode;
@@ -381,9 +454,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.location.href = url.toString();
     } else {
       let url;
-      if (movie.sourceKind === "streammafia") {
-        url = buildStreammafiaUrl(movie, season, episode);
-      } else if (movie.type === "anime") {
+      if (movie.type === "anime") {
         const linearEp = computeAnimeLinearEpisode(
           movie.seasons,
           season,
@@ -399,25 +470,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   renderEpisodes(movie, playEpisode, selectedSeason, selectedEpisode);
 
-  // Initial playback for embedded sources; downloads wait for episode click
+  // Initial playback for vidsrc sources only; downloads wait for episode click
   if (movie.sourceKind !== "download") {
     const url =
-      movie.sourceKind === "streammafia"
-        ? buildStreammafiaUrl(movie, selectedSeason, selectedEpisode)
-        : movie.type === "movie"
-          ? buildVidsrcUrl(movie)
-          : movie.type === "anime"
-            ? buildVidsrcUrl(
-                movie,
-                null,
-                computeAnimeLinearEpisode(
-                  movie.seasons,
-                  selectedSeason,
-                  selectedEpisode
-                ),
-                "sub"
-              )
-            : buildVidsrcUrl(movie, selectedSeason, selectedEpisode);
+      movie.type === "movie"
+        ? buildVidsrcUrl(movie)
+        : movie.type === "anime"
+          ? buildVidsrcUrl(
+              movie,
+              null,
+              computeAnimeLinearEpisode(
+                movie.seasons,
+                selectedSeason,
+                selectedEpisode
+              ),
+              "sub"
+            )
+          : buildVidsrcUrl(movie, selectedSeason, selectedEpisode);
 
     runAdThenContent(url);
   }
